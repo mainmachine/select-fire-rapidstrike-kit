@@ -31,6 +31,8 @@ The RP2040-Zero can be powered via VIN/VSYS at either 5V or 3.3V — 5V (e.g. of
 - **ADC reference voltage**: `ARDUINO_SUPPLY_VOLTAGE` (5.0 on the Nano) is renamed `BOARD_SUPPLY_VOLTAGE` and set to `3.3`. This is *not* the board's power input voltage (see above) — it's the RP2040's fixed ADC reference, and it feeds directly into the current-sense math (`analogReadingToVoltage()`). It must stay `3.3` regardless of what voltage powers the board, or current-sense/OCP readings will be off by ~52% (5.0/3.3). It must also match whatever reference the current-sense circuit actually presents to the ADC pin — see the hardware caveat below.
 - **ADC resolution unchanged**: the arduino-pico core's `analogRead()` defaults to 10-bit (0–1023), same as the Nano's AVR ADC, so the existing `map()`/`/1024.0` scaling in `setRateOfFire()` and `analogReadingToVoltage()` didn't need to change. If you want the RP2040's full 12-bit ADC resolution, call `analogReadResolution(12)` in `setup()` and update those two spots to divide by 4096 instead.
 - **Serial init no longer blocks**: the Nano's `initSerial()` had a `while(!Serial){}` wait, which is a no-op on the Nano's always-on hardware UART. The RP2040's `Serial` is native USB CDC and only becomes truthy once a host opens the port, so that same loop would hang the blaster indefinitely with no PC attached. The port drops the wait — `Serial.begin()` still runs so `Serial.print`/`println` calls work whenever something is listening, but firing no longer depends on it.
+- **Timer callback signature**: `arduino-timer`'s `Timer<>::in()`/`::every()` expect a `bool handler(void *)` callback, not a bare `bool handler()`. The Nano build only accepted the old zero-argument callbacks (`monitorCurrent`, `handleComplementaryFETTransition`, `turnOnPusherMotor`, `turnSolenoidOff`, `handleSolenoidTuronOn`) because avr-gcc's Arduino build compiles with `-fpermissive`, silently allowing the mismatched function pointer conversion. The arduino-pico core doesn't, so this is a hard compile error on RP2040 — those five handlers now take an unused `void *` parameter. No behavior change.
+- **`getRotSwPos()` had two latent bugs** that avr-gcc only warned about but arduino-pico treats as errors: it took `uint8_t rotSwPins[]` for what's always called with the `const uint8_t ROT_SW_PINS[]` array (fixed by making the parameter `const`), and it fell off the end returning an undefined value when the rotary switch rests between detents (no pin reads low). The port adds an explicit `return 0xFF` for that case — `0xFF` matches none of the `ROT_SW_*_PIN` values, so `setCurrentFiremode()` leaves `currentFireMode` unchanged, which is what the surrounding logic already assumed would happen.
 
 ## Hardware caveats (if adapting the existing v1.0 PCB rather than a new board)
 
@@ -43,3 +45,16 @@ These aren't firmware changes — they're things to check before wiring an RP204
 ## Dependencies
 
 Same Arduino libraries as the Nano firmware (Library Manager): `JC_Button`, `CircularBuffer`, `arduino-timer`. Board support: install the [earlephilhower/arduino-pico](https://github.com/earlephilhower/arduino-pico) core via Boards Manager ("Raspberry Pi Pico/RP2040"), then select the "Waveshare RP2040 Zero" board.
+
+Note: `#include <CircularBuffer.h>` prints a deprecation pragma on recent releases of that library; this sketch includes `<CircularBuffer.hpp>` instead, which is silent and behaves identically.
+
+## Build/flash status
+
+Compiled clean (no warnings) and flashed to a physical Waveshare RP2040-Zero via `arduino-cli` using:
+
+- Core: `rp2040:rp2040` 5.6.1 (`earlephilhower/arduino-pico`), board `rp2040:rp2040:waveshare_rp2040_zero`
+- Libraries: `JC_Button` 2.1.6, `CircularBuffer` 1.4.0, `arduino-timer` 3.0.1
+
+Flashing: hold BOOTSEL while plugging in (or double-tap the reset button on an already-running board) to expose the `RPI-RP2` USB mass-storage drive, then copy the built `.uf2` file onto it — the board reboots into the new firmware automatically.
+
+After flashing, the board came up correctly (rotary switch, trigger, and cycle-control pins init fine; `arduino-timer` callbacks fire; USB serial works). With nothing wired to the current-sense pin (GP27) it continuously prints `OCP`, since a floating ADC pin combined with the 0.01Ω sense-resistor math reads as spurious high current — this is expected on a bare dev board and isn't a firmware defect; it goes away once an actual current-sense circuit is wired to GP27.

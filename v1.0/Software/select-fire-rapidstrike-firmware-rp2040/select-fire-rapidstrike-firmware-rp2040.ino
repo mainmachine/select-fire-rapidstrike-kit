@@ -16,9 +16,9 @@ same as the Nano firmware: JC_Button, CircularBuffer, arduino-timer.
 ------------------------------------------------------------------------ */
 
 #include <Arduino.h>
-#include <timer.h>
+#include <arduino-timer.h>
 #include <JC_Button.h>
-#include <CircularBuffer.h>
+#include <CircularBuffer.hpp>
 
 //
 // Macros and vars for trigger and cycle control switch stuff
@@ -90,7 +90,7 @@ void initSerial(void);
 void initFETPins(void);
 
 void controlMotors();
-bool handleComplementaryFETTransition();
+bool handleComplementaryFETTransition(void *);
 void turnOffAllFETs();
 void setFETsForBraking();
 void setFETsForOn();
@@ -101,7 +101,7 @@ void handleCycleControl();
 
 void handleFiring();
 
-uint8_t getRotSwPos(uint8_t rotSwPins[], uint8_t);
+uint8_t getRotSwPos(const uint8_t rotSwPins[], uint8_t);
 void setCurrentFiremode(uint8_t);
 void printCurrentFireMode();
 void setPusherMechanism();
@@ -110,13 +110,13 @@ void setDartsToFire();
 
 void handlePusherMotorFiring();
 void updatePusherMotorTiming();
-bool turnOnPusherMotor();
+bool turnOnPusherMotor(void *);
 void handlePusherMotorSemiAutoAndBurst();
 void handlePusherMotorFullAuto();
 
 void handleSolenoidFiring();
 void updateSolenoidTiming();
-bool handleSolenoidTuronOn();
+bool handleSolenoidTuronOn(void *);
 void handleSolenoidSemiAutoAndBurst();
 void handleSolenoidFullAuto();
 
@@ -344,7 +344,7 @@ void controlMotors() {
 }
 
 // Actually drives FETs in complementary switching
-bool handleComplementaryFETTransition() {
+bool handleComplementaryFETTransition(void *) {
 	if (firingState.targetPusherState == PUSHER_DRIVE_STATE_ON) {
 		setFETsForOn();
 	} else if (firingState.targetPusherState == PUSHER_DRIVE_STATE_BRAKE) {
@@ -434,13 +434,17 @@ void handleFiring() {
 }
 
 // Returns position of rotary switch in terms of which pin is connected to COM (pin is low)
-uint8_t getRotSwPos(uint8_t rotSwPins[], uint8_t numOfRotSwPins) {
+uint8_t getRotSwPos(const uint8_t rotSwPins[], uint8_t numOfRotSwPins) {
   for (int rotSwPin = 0; rotSwPin < NUM_OF_ROT_SW_PINS; rotSwPin++) {
     if (digitalRead(rotSwPins[rotSwPin]) == LOW) {
       return rotSwPins[rotSwPin];
     }
   }
 
+  // No rotary switch pin grounded (switch resting between detents). Return a
+  // sentinel that matches no ROT_SW_*_PIN so setCurrentFiremode() leaves
+  // currentFireMode unchanged instead of acting on an uninitialized value.
+  return 0xFF;
 }
 
 void setCurrentFiremode(uint8_t ROT_SW_POS) {
@@ -605,7 +609,7 @@ void updatePusherMotorTiming() {
 	// Serial.println(firingState.pusherMotorOffTime);
 }
 
-bool turnOnPusherMotor() {
+bool turnOnPusherMotor(void *) {
 	if (firingState.currentFireMode != SAFETY) {
 		// Don't fire if pusher is in full-auto and trigger isn't held
 		if (firingState.currentFireMode == FULL_AUTO
@@ -710,7 +714,7 @@ void handleSolenoidFullAuto() {
 
 // Turns solenoid off and continues firing loop. Don't call this if you just
 // want to turn off the solenoid
-bool turnSolenoidOff() {
+bool turnSolenoidOff(void *) {
 	// Serial.println("Off");
 	firingState.targetPusherState = PUSHER_DRIVE_STATE_BRAKE;
 
@@ -724,7 +728,7 @@ bool turnSolenoidOff() {
 // Called after solenoid turns off and about to turn back on. Ideally, this is
 // executed when plunger in retraced position. Determines whether to continue
 // firing the solenoid or to turn the solenoid off
-bool handleSolenoidTuronOn() {
+bool handleSolenoidTuronOn(void *) {
 	firingState.dartsFired++;
 
 	// Update timing in case rate of fire changed
@@ -760,7 +764,7 @@ float voltageToCurrent(float voltage) {
 	return voltage/SENSE_RESISTANCE;	// Basic Ohm's law
 }
 
-bool monitorCurrent() {
+bool monitorCurrent(void *) {
  	currentSenseState.instantaneousCurrentDraw = voltageToCurrent(analogReadingToVoltage());
 
 	updateCurrentSenseValues(currentSenseState.instantaneousCurrentDraw);
