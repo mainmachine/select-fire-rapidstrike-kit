@@ -15,6 +15,7 @@ Each top-level directory is a distinct hardware revision, oldest to newest: `v0.
 Within a version directory:
 - `Hardware/` (or `hardware/` — casing is inconsistent across versions, e.g. `v1.2/hardware` vs `v1.3/Hardware`): EAGLE `.sch` (schematic) and `.brd` (board) files, a rendered `Schematics.pdf`, top/bottom PCB renders as PNGs, and `gerbers.zip` (fab-ready Gerber output). `.epf` is the EAGLE project file (present from v1.1 onward).
 - `Software/select-fire-rapidstrike-firmware/`: the production `.ino` sketch for that hardware revision. Only `v0.1` and `v1.0` have firmware; later hardware revisions (`v1.1`–`v1.3`) did not get accompanying firmware changes in this repo.
+- `v1.0/Software/select-fire-rapidstrike-firmware-rp2040/`: a port of the v1.0 firmware to a Waveshare RP2040-Zero (different MCU, not a new PCB revision). Same control logic, retargeted pins and board-specific constants — see the README in that directory for the full pin map and hardware caveats (3.3V logic, gate-drive voltage, current-sense scaling) before wiring an RP2040-Zero into a v1.0 board.
 - `Software/tests/`: standalone throwaway `.ino` sketches used to bring up/validate individual subsystems in isolation (rotary switch reading, half-bridge driving, serial + digital I/O, a solenoid-only variant of the main firmware, etc.) — not automated tests, and not exercised by any test runner.
 
 `Wiring Diagrams/` (top-level, version-independent) holds reference wiring diagrams (JPG) for common builds, e.g. flywheel motors with a microswitch, and a voltmeter with a kill switch.
