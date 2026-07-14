@@ -20,12 +20,10 @@ same as the Nano firmware: JC_Button, CircularBuffer, arduino-timer.
 #include <JC_Button.h>
 #include <CircularBuffer.hpp>
 
-//
 // Macros and vars for trigger and cycle control switch stuff
 #define TRIGGER_PIN 2			// GP2 (was D2 on Nano)
 #define CYC_CTRL_PIN 4			// GP4 (was D4 on Nano)
 
-//
 // Macros for FET pins
 #define HIGH_SIDE_PIN 3			// GP3 (was D3 on Nano)
 #define LOW_SIDE_PIN 5			// GP5 (was D5 on Nano)
@@ -49,11 +47,9 @@ same as the Nano firmware: JC_Button, CircularBuffer, arduino-timer.
 #define BOARD_SUPPLY_VOLTAGE 3.3
 #define NUM_OF_SAMPLES_FOR_DIFFERENTIATION 3
 
-//
 // Macros and vars for variable fire rate control values
 #define POT_PIN 26			// GP26 / ADC0 (was A0 on Nano)
 
-//
 // Macros for fire values
 #define SAFETY 0
 #define SEMI_AUTO 1
@@ -62,7 +58,6 @@ same as the Nano firmware: JC_Button, CircularBuffer, arduino-timer.
 
 #define BURST_FIRE_LENGTH 3
 
-//
 // Macros to keep track of fire mechanisms
 // Improve readability of pusher mechanism logic
 #define PUSHER_MOTOR_FIRING_MECHANISM 0
@@ -75,7 +70,6 @@ same as the Nano firmware: JC_Button, CircularBuffer, arduino-timer.
 // Pin used to enable over current sensing when using an H-Bridge configuration
 #define H_BRIDGE_SELECT_PIN 12 // GP12
 
-//
 // Macros and vars for rotary switch stuff
 #define ROT_SW_SAFETY_PIN 6		// GP6 (was D6 on Nano)
 #define ROT_SW_SEMI_AUTO_PIN 7		// GP7 (was D7 on Nano)
@@ -85,7 +79,6 @@ same as the Nano firmware: JC_Button, CircularBuffer, arduino-timer.
 #define NUM_OF_ROT_SW_PINS 4
 // Array of all rotary switch pins so it's easier to iterate through all of them
 const uint8_t ROT_SW_PINS[] = {ROT_SW_SAFETY_PIN, ROT_SW_SEMI_AUTO_PIN, ROT_SW_BURST_FIRE_PIN, ROT_SW_FULL_AUTO_PIN};
-
 
 // Function prototypes incase you're not using Arduino IDE
 // I'd highly recommend using Platform.io instead of Arduino IDE
@@ -179,7 +172,6 @@ struct firingState {
 
 	// Timer to keep track of when to turn on/off the pusher
 	Timer<> firingTimer = timer_create_default();
-
 
 } firingState;
 
