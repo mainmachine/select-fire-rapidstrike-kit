@@ -72,6 +72,9 @@ same as the Nano firmware: JC_Button, CircularBuffer, arduino-timer.
 // for solenoid. Uses internal pullup so HIGH = motor, LOW = solenoid
 #define PUSHER_MECHANISM_SELECT_PIN 11		// GP11 (was D11 on Nano)
 
+// Pin used to enable over current sensing when using an H-Bridge configuration
+#define H_BRIDGE_SELECT_PIN 12 // GP12
+
 //
 // Macros and vars for rotary switch stuff
 #define ROT_SW_SAFETY_PIN 6		// GP6 (was D6 on Nano)
@@ -250,14 +253,22 @@ void setup() {
 	initRotSwPins();
 
 	pinMode(PUSHER_MECHANISM_SELECT_PIN, INPUT_PULLUP);
+	pinMode(H_BRIDGE_SELECT_PIN, INPUT_PULLUP);
 
 	trgSw.begin();
 	cycCtrlSw.begin();
 
-	// Start timer that executes monitorCurrent() every
-	// currentSenseState.SAMPLE_DELAY ms
-	currentSenseState.currentSenseTimer
-		.every(currentSenseState.SAMPLE_DELAY, monitorCurrent);
+	// If an H-Bridge is used, enable over current sensing
+	// Sets current sensing based on reading jumper pin (GP12)
+	// If high (no jumper cap on), current sensing is disabled
+	// If low (jumper cap on), current sensing is enabled
+	if (digitalRead(H_BRIDGE_SELECT_PIN)) {
+		// Start timer that executes monitorCurrent() every
+		// currentSenseState.SAMPLE_DELAY ms
+		currentSenseState.currentSenseTimer
+			.every(currentSenseState.SAMPLE_DELAY, monitorCurrent);
+	}
+
 }
 
 void loop() {
