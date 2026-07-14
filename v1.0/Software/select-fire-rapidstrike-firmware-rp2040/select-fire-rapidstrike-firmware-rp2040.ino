@@ -70,14 +70,22 @@ same as the Nano firmware: JC_Button, CircularBuffer, arduino-timer.
 // Pin used to enable over current sensing when using an H-Bridge configuration
 #define H_BRIDGE_SELECT_PIN 12 // GP12
 
-// Macros and vars for rotary switch stuff
+// Macros and vars for fire mode select pins. All active-low with internal
+// pullups. ROT_SW_SAFETY_PIN always overrides the other three when grounded.
+// Below that, only ROT_SW_SEMI_AUTO_PIN and ROT_SW_BURST_FIRE_PIN need to be
+// wired for a basic 3-mode (semi/burst/full) build: full auto is the default
+// when neither is grounded, so it needs no wire of its own. Wiring
+// ROT_SW_FULL_AUTO_PIN low is optional and only meaningful for builds that
+// wire all 3 non-safety positions explicitly - it produces the same result
+// (FULL_AUTO) as the default case. See setCurrentFiremode().
 #define ROT_SW_SAFETY_PIN 6		// GP6 (was D6 on Nano)
 #define ROT_SW_SEMI_AUTO_PIN 7		// GP7 (was D7 on Nano)
 #define ROT_SW_BURST_FIRE_PIN 8	// GP8 (was D8 on Nano)
 #define ROT_SW_FULL_AUTO_PIN 9		// GP9 (was D9 on Nano)
 
-#define NUM_OF_ROT_SW_PINS 4
-// Array of all rotary switch pins so it's easier to iterate through all of them
+// Array of all rotary switch pins, used only to pinMode() them all as
+// INPUT_PULLUP in initRotSwPins() - fire mode itself is decided by
+// setCurrentFiremode() reading these pins directly, not by scanning this array.
 const uint8_t ROT_SW_PINS[] = {ROT_SW_SAFETY_PIN, ROT_SW_SEMI_AUTO_PIN, ROT_SW_BURST_FIRE_PIN, ROT_SW_FULL_AUTO_PIN};
 
 // Function prototypes incase you're not using Arduino IDE
@@ -97,8 +105,7 @@ void handleCycleControl();
 
 void handleFiring();
 
-uint8_t getRotSwPos(const uint8_t rotSwPins[], uint8_t);
-void setCurrentFiremode(uint8_t);
+void setCurrentFiremode();
 void printCurrentFireMode();
 void setPusherMechanism();
 void setRateOfFire();
@@ -414,8 +421,7 @@ void handleCycleControl() {
 
 void handleFiring() {
 	if (firingState.wasTriggerPulled) {
-    const uint8_t ROT_SW_POS = getRotSwPos(ROT_SW_PINS, NUM_OF_ROT_SW_PINS);
-		setCurrentFiremode(ROT_SW_POS);
+    setCurrentFiremode();
 		// printCurrentFireMode();
 
     setPusherMechanism();
@@ -436,28 +442,22 @@ void handleFiring() {
   }
 }
 
-// Returns position of rotary switch in terms of which pin is connected to COM (pin is low)
-uint8_t getRotSwPos(const uint8_t rotSwPins[], uint8_t numOfRotSwPins) {
-  for (int rotSwPin = 0; rotSwPin < NUM_OF_ROT_SW_PINS; rotSwPin++) {
-    if (digitalRead(rotSwPins[rotSwPin]) == LOW) {
-      return rotSwPins[rotSwPin];
-    }
-  }
-
-  // No rotary switch pin grounded (switch resting between detents). Return a
-  // sentinel that matches no ROT_SW_*_PIN so setCurrentFiremode() leaves
-  // currentFireMode unchanged instead of acting on an uninitialized value.
-  return 0xFF;
-}
-
-void setCurrentFiremode(uint8_t ROT_SW_POS) {
-  if (ROT_SW_POS == ROT_SW_SAFETY_PIN) {
+// Sets fire mode by reading the rotary switch pins directly, in priority
+// order: SAFETY (ROT_SW_SAFETY_PIN) always overrides everything else. Below
+// that, only two wired switches are needed to cover all 3 firing modes:
+// ROT_SW_SEMI_AUTO_PIN low selects semi-auto, ROT_SW_BURST_FIRE_PIN low
+// selects burst, and full auto is simply the default when neither of those
+// is grounded - no third wire required. A build that wires all 3 positions
+// explicitly (including ROT_SW_FULL_AUTO_PIN) still works identically, since
+// grounding ROT_SW_FULL_AUTO_PIN also falls through to the same default.
+void setCurrentFiremode() {
+  if (digitalRead(ROT_SW_SAFETY_PIN) == LOW) {
     firingState.currentFireMode = SAFETY;
-  } else if (ROT_SW_POS == ROT_SW_SEMI_AUTO_PIN) {
+  } else if (digitalRead(ROT_SW_SEMI_AUTO_PIN) == LOW) {
     firingState.currentFireMode = SEMI_AUTO;
-  } else if (ROT_SW_POS == ROT_SW_BURST_FIRE_PIN) {
+  } else if (digitalRead(ROT_SW_BURST_FIRE_PIN) == LOW) {
     firingState.currentFireMode = BURST_FIRE;
-  } else if (ROT_SW_POS == ROT_SW_FULL_AUTO_PIN) {
+  } else {
     firingState.currentFireMode = FULL_AUTO;
   }
 }
