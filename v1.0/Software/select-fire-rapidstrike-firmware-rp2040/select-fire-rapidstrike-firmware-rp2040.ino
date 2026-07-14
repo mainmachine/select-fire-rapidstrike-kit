@@ -262,7 +262,7 @@ void setup() {
 	// Sets current sensing based on reading jumper pin (GP12)
 	// If high (no jumper cap on), current sensing is disabled
 	// If low (jumper cap on), current sensing is enabled
-	if (digitalRead(H_BRIDGE_SELECT_PIN)) {
+	if (!digitalRead(H_BRIDGE_SELECT_PIN)) {
 		// Start timer that executes monitorCurrent() every
 		// currentSenseState.SAMPLE_DELAY ms
 		currentSenseState.currentSenseTimer
