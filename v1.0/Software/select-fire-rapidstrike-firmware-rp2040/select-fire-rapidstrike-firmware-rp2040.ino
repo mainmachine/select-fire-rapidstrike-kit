@@ -19,6 +19,7 @@ same as the Nano firmware: JC_Button, CircularBuffer, arduino-timer.
 #include <arduino-timer.h>
 #include <JC_Button.h>
 #include <CircularBuffer.hpp>
+#include <hardware/gpio.h>
 
 // Macros and vars for trigger and cycle control switch stuff
 #define TRIGGER_PIN 2			// GP2 (was D2 on Nano)
@@ -295,6 +296,22 @@ void initSerial() {
 void initFETPins() {
 	pinMode(HIGH_SIDE_PIN, OUTPUT);
 	pinMode(LOW_SIDE_PIN, OUTPUT);
+
+	// LOW_SIDE_GATE (Q302, the pusher motor's low-side switch) is driven by a
+	// bare series resistor straight from this MCU pin, with no dedicated gate
+	// driver IC - unlike the high-side FET, which is buffered through U1
+	// (74LVC1G07). At higher pack voltages, PUSHER_NEG swings through a much
+	// bigger range each time Q302 switches off, and that fast dV/dt couples
+	// back into the gate through the FET's drain-gate (Miller) capacitance.
+	// Maxing out drive strength/slew rate here gives the pin the most current
+	// and speed it can offer to sink that Miller current and hold the gate
+	// down. This is a mitigation, not a guaranteed fix: if the pack voltage
+	// still overwhelms a resistor-only gate path, the real fix is a proper
+	// low-side gate driver IC (mirroring the high-side design), not firmware.
+	gpio_set_drive_strength(LOW_SIDE_PIN, GPIO_DRIVE_STRENGTH_12MA);
+	gpio_set_slew_rate(LOW_SIDE_PIN, GPIO_SLEW_RATE_FAST);
+	gpio_set_drive_strength(HIGH_SIDE_PIN, GPIO_DRIVE_STRENGTH_12MA);
+	gpio_set_slew_rate(HIGH_SIDE_PIN, GPIO_SLEW_RATE_FAST);
 
 	firingState.targetPusherState = PUSHER_DRIVE_STATE_OFF;
 
